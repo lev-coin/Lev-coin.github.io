@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.irys.xyz; connect-src 'self' https://api.devnet.solana.com wss://api.devnet.solana.com https://api.mainnet-beta.solana.com wss://api.mainnet-beta.solana.com https://*.irys.xyz; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Lev (LEV) — създаване на токена</title>
+<link rel="icon" href="lev_64.png">
+<style>
+  :root { --red:#c62828; --green:#2e7d32; --bg:#f6f4ef; }
+  * { box-sizing: border-box; }
+  body { margin:0; font: 18px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:#1b1b1b; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.5em; margin: .3em 0; display:flex; align-items:center; gap:.5em; }
+  h1 img { width:48px; height:48px; border-radius:50%; }
+  .card { background:#fff; border-radius:14px; padding:16px; margin:14px 0; box-shadow:0 1px 4px #0002; }
+  .card h2 { font-size:1.1em; margin:0 0 .5em; }
+  button { width:100%; font-size:1.1em; padding:16px; border:0; border-radius:12px; background:#1b5e20; color:#fff; font-weight:600; margin-top:8px; }
+  button:disabled { background:#9e9e9e; }
+  button.secondary { background:#455a64; }
+  .net { display:flex; gap:8px; }
+  .net label { flex:1; border:2px solid #ccc; border-radius:12px; padding:12px; text-align:center; font-weight:600; }
+  .net input { transform:scale(1.4); margin-right:6px; }
+  .warn { background:#ffebee; border:2px solid var(--red); color:#7f0000; border-radius:12px; padding:12px; margin-top:10px; }
+  .info { background:#e3f2fd; border-radius:12px; padding:12px; margin-top:10px; font-size:.95em; }
+  .ok { color:var(--green); } .bad { color:var(--red); }
+  .mono { font-family: ui-monospace, monospace; word-break: break-all; font-size:.85em; }
+  ul.check { list-style:none; padding:0; } ul.check li { margin:.4em 0; }
+  .hidden { display:none; }
+  #log { font-size:.85em; color:#555; white-space:pre-wrap; }
+  a { color:#0d47a1; word-break: break-all; }
+  .cost td { padding:2px 6px; } .cost td:last-child { text-align:right; font-family:ui-monospace,monospace; }
+</style>
+</head>
+<body>
+<main>
+  <h1><img src="lev_256.png" alt="">Lev (LEV)</h1>
+  <p>Тази страница създава токена <b>Lev (LEV)</b> от твоя Phantom портфейл. Ключовете ти остават в Phantom — тук нищо не се пази и не се изпраща никъде, освен към мрежата Solana и хранилището Irys.</p>
+
+  <div class="card">
+    <h2>1. Мрежа</h2>
+    <div class="net">
+      <label><input type="radio" name="net" value="devnet" checked>Devnet (тест)</label>
+      <label style="border-color:var(--red);color:var(--red)"><input type="radio" name="net" value="mainnet">Mainnet (истински)</label>
+    </div>
+    <div id="devnetInfo" class="info">Тестова мрежа — SOL тук е безплатен и без стойност. В Phantom включи: Настройки → Developer Settings → Testnet Mode → Solana Devnet.</div>
+    <div id="mainnetWarn" class="warn hidden">
+      <b>⚠ ИСТИНСКА МРЕЖА (MAINNET).</b> Тук се харчи истински SOL и всичко е <b>необратимо</b>. В Phantom изключи Testnet Mode.
+      <label style="display:block;margin-top:8px"><input type="checkbox" id="mainnetOk"> Разбирам и искам да продължа в mainnet</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Портфейл</h2>
+    <div id="noPhantom" class="warn hidden">Не виждам Phantom. Отвори тази страница <b>в браузъра на Phantom</b>: в Phantom натисни лентата за търсене долу → „Sites“ → въведи адреса на тази страница.</div>
+    <button id="connect">Свържи Phantom</button>
+    <div id="walletInfo" class="hidden"><p>Адрес: <span id="addr" class="mono"></span><br>Баланс: <b id="balance"></b> SOL</p></div>
+  </div>
+
+  <div class="card">
+    <h2>3. Лого и описание</h2>
+    <p>Качва логото (PNG 256×256) и описанието в Irys. Phantom ще поиска: <b>1 превод</b> на малка сума (такса за съхранение) и <b>2 подписа на съобщение</b> (дълъг код — това НЕ прехвърля пари).</p>
+    <p>Цена: <b id="uploadPrice">—</b> SOL</p>
+    <button id="upload" disabled>Качи логото и описанието</button>
+    <div id="uploaded" class="hidden"><p class="ok">✔ Качено</p><img id="logoPreview" width="96" height="96" alt=""><p>Метаданни: <a id="metaLink" class="mono" target="_blank" rel="noopener"></a></p></div>
+  </div>
+
+  <div class="card">
+    <h2>4. Създай LEV</h2>
+    <div id="summary"></div>
+    <label style="display:block;margin-top:8px"><input type="checkbox" id="confirm"> Прочетох. Разбирам, че след това <b>никой</b> (и аз) не може да сече нови LEV, да замразява портфейли или да променя името и логото.</label>
+    <button id="create" disabled>Създай LEV</button>
+  </div>
+
+  <div id="result" class="card hidden">
+    <h2>✔ Готово</h2>
+    <p>Адрес на токена (mint):<br><b id="mintAddr" class="mono"></b></p>
+    <p><a id="solscanLink" target="_blank" rel="noopener">Виж в Solscan</a></p>
+    <h2>Проверка</h2>
+    <ul id="checklist" class="check"></ul>
+    <button id="recheck" class="secondary">Провери пак</button>
+  </div>
+
+  <div class="card"><h2>Дневник</h2><div id="log"></div></div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
