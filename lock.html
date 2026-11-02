@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://solana-rpc.publicnode.com wss://solana-rpc.publicnode.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Lev (LEV) — заключване на ликвидността</title>
+<link rel="icon" href="lev_64.png">
+<style>
+  :root { --red:#c62828; --green:#2e7d32; --bg:#f6f4ef; }
+  * { box-sizing: border-box; }
+  body { margin:0; font: 18px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:#1b1b1b; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.4em; margin: .3em 0; display:flex; align-items:center; gap:.5em; }
+  h1 img { width:48px; height:48px; border-radius:50%; }
+  .card { background:#fff; border-radius:14px; padding:16px; margin:14px 0; box-shadow:0 1px 4px #0002; }
+  .card h2 { font-size:1.1em; margin:0 0 .5em; }
+  button { width:100%; font-size:1.1em; padding:16px; border:0; border-radius:12px; background:#1b5e20; color:#fff; font-weight:600; margin-top:8px; }
+  button:disabled { background:#9e9e9e; }
+  button.danger { background:var(--red); } button.danger:disabled { background:#9e9e9e; }
+  button.secondary { background:#455a64; }
+  .warn { background:#ffebee; border:2px solid var(--red); color:#7f0000; border-radius:12px; padding:12px; margin-top:10px; }
+  .info { background:#e3f2fd; border-radius:12px; padding:12px; margin-top:10px; font-size:.95em; }
+  .ok { color:var(--green); } .bad { color:var(--red); }
+  .mono { font-family: ui-monospace, monospace; word-break: break-all; font-size:.85em; }
+  .hidden { display:none; }
+  #log { font-size:.85em; color:#555; white-space:pre-wrap; }
+  a { color:#0d47a1; word-break: break-all; }
+  table { width:100%; border-collapse:collapse; } td { padding:4px 2px; vertical-align:top; } td:last-child { text-align:right; }
+  .big { font-size:1.3em; font-weight:700; }
+  label.chk { display:flex; gap:10px; align-items:flex-start; margin-top:10px; } label.chk input { transform:scale(1.5); margin-top:6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1><img src="lev_256.png" alt="">Заключване на ликвидността LEV-SOL</h1>
+  <p>Тази страница прави <b>само едно нещо</b>: заключва <b>завинаги</b> цялата ти ликвидност в пула LEV-SOL на Meteora (DAMM v2). Ключовете ти остават в Phantom.</p>
+
+  <div class="card">
+    <h2>1. Пул и позиция</h2>
+    <p>Пул: <a class="mono" target="_blank" rel="noopener" href="https://solscan.io/account/8R6rYd9JHrrqHoXxeQvboxPyKZPanj3De7YeSSnKcYc">8R6rYd9JHrrqHoXxeQvboxPyKZPanj3De7YeSSnKcYc</a></p>
+    <p>Позиция: <a class="mono" target="_blank" rel="noopener" href="https://solscan.io/account/GXw9cSHFD22qTes8uTGQTbsRWhQyEiLdaAQyqEqsaYvg">GXw9cSHFD22qTes8uTGQTbsRWhQyEiLdaAQyqEqsaYvg</a></p>
+    <p>Портфейл-собственик: <span class="mono">34VCAKkYzH3Spzhn5uPDaZ2ndPCcSSTYvZhZ1aVHbohu</span></p>
+    <table>
+      <tr><td>Незаключена ликвидност</td><td><b id="unlockedPct">…</b><br><span class="mono" id="unlocked"></span></td></tr>
+      <tr><td>Заключена завинаги</td><td><b id="permPct">…</b><br><span class="mono" id="perm"></span></td></tr>
+    </table>
+    <button id="reload" class="secondary">Обнови</button>
+  </div>
+
+  <div class="warn">
+    <b>⚠ НЕОБРАТИМО.</b> След заключването <b>никой — и ти — не може да изтегли</b> 17,85 млн. LEV и ~0,4 SOL от пула. Никога. Таксите от търговията остават твои и могат да се теглят.
+  </div>
+
+  <div class="card">
+    <h2>2. Портфейл</h2>
+    <div id="noPhantom" class="warn hidden">Не виждам Phantom. Отвори тази страница <b>в браузъра на Phantom</b>.</div>
+    <button id="connect">Свържи Phantom</button>
+    <p id="walletInfo" class="hidden">Адрес: <span id="addr" class="mono"></span><br>Баланс: <b id="balance"></b> SOL</p>
+  </div>
+
+  <div class="card">
+    <h2>3. Заключи</h2>
+    <p>Една транзакция: заключва <b>100%</b> от незаключената ликвидност. Без преводи. Мрежова такса около <b id="fee"></b> SOL.</p>
+    <p>Преди подписа страницата първо прави <b>проба (симулация)</b> и показва резултата.</p>
+    <label class="chk"><input type="checkbox" id="agree"><span>Разбирам, че това е <b>завинаги</b> и ликвидността не може да бъде изтеглена.</span></label>
+    <button id="lock" class="danger" disabled>Заключи завинаги</button>
+    <div id="sim" class="info hidden"></div>
+  </div>
+
+  <div id="result" class="card hidden">
+    <h2 class="ok">✔ Готово — ликвидността е заключена</h2>
+    <p class="big ok" id="resPct"></p>
+    <p>Транзакция:<br><a id="txLink" class="mono" target="_blank" rel="noopener"></a></p>
+  </div>
+
+  <div class="card"><h2>Дневник</h2><div id="log"></div></div>
+</main>
+<script src="lock.js"></script>
+</body>
+</html>
